@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Sukarelawan Asrama (Firebase Live)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Pustaka HTML5 QR Code Scanner -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-8 font-sans">
+
+  <div class="max-w-6xl mx-auto space-y-8">
+    
+    <!-- Header -->
+    <div class="bg-indigo-900 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div>
+        <h1 class="text-2xl font-bold">Sistem Sukarelawan Aktiviti Asrama</h1>
+        <p class="text-indigo-200 text-sm">Pendaftaran, Bulk Upload, Generasi QR & Imbas Kehadiran (Firebase Real-Time)</p>
+      </div>
+      <div class="flex gap-2 text-xs">
+        <span class="bg-emerald-500 text-slate-900 font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-slate-900 animate-ping"></span> Live Firebase DB
+        </span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- KIRI: TAB INPUT & QR GENERATOR (5 Col) -->
+      <div class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-slate-200 mb-6 text-xs sm:text-sm font-bold overflow-x-auto">
+          <button id="tabSingleBtn" onclick="switchTab('single')" class="py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap">
+            📝 Daftar
+          </button>
+          <button id="tabBulkBtn" onclick="switchTab('bulk')" class="py-2 px-3 text-slate-400 hover:text-indigo-600 whitespace-nowrap">
+            📁 Bulk Upload
+          </button>
+          <button id="tabScanBtn" onclick="switchTab('scan')" class="py-2 px-3 text-slate-400 hover:text-emerald-600 whitespace-nowrap">
+            📷 Imbas QR
+          </button>
+        </div>
+
+        <!-- TAB 1: BORANG PENDAFTARAN KENDIRI -->
+        <form id="singleForm" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Aktiviti / Program</label>
+            <input type="text" id="aktiviti" required class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="cth: Ceramah Maulidur Rasul">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Penuh Pelajar</label>
+            <input type="text" id="nama" required class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="cth: Siti Nurhaliza">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">No. Matrik</label>
+              <input type="text" id="no_matrik" required class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none uppercase" placeholder="M2026001">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Blok / Bilik</label>
+              <input type="text" id="bilik" required class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="A-204">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori Minat</label>
+              <select id="kategori" class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <option value="Logistik">Logistik</option>
+                <option value="Teknikal">Teknikal & P.A</option>
+                <option value="Urus Setia">Urus Setia</option>
+                <option value="Media">Media & Fotografi</option>
+                <option value="Kebajikan">Makanan & Kebajikan</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Saiz Baju</label>
+              <select id="saiz" class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <option value="S">S</option>
+                <option value="M">M</option>
+                <option value="L" selected>L</option>
+                <option value="XL">XL</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg text-sm transition shadow">
+            + Hantar Pendaftaran
+          </button>
+        </form>
+
+        <!-- KAD QR PELAJAR (MUNCUL SELEPAS DAFTAR KENDIRI) -->
+        <div id="studentCardContainer" class="hidden mt-6 pt-6 border-t border-slate-200">
+          <div class="bg-gradient-to-br from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-200 text-center space-y-3 shadow-inner">
+            <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider bg-white px-2 py-0.5 rounded-full border border-indigo-100">Kad QR Sukarelawan</span>
+            <h3 id="cardName" class="font-bold text-slate-800 text-base">Ahmad Razak</h3>
+            <p id="cardMatrik" class="text-xs font-mono text-indigo-700 font-semibold">M2026001</p>
+            
+            <div class="flex justify-center my-2">
+              <img id="cardQR" src="" alt="Kod QR Pelajar" class="w-36 h-36 border-2 border-white rounded-lg shadow-sm p-1 bg-white">
+            </div>
+            <p class="text-[11px] text-slate-500 italic">Sila simpan/tunjuk Kod QR ini semasa hari kejadian untuk discan oleh urus setia.</p>
+          </div>
+        </div>
+
+        <!-- TAB 2: BULK UPLOAD (ADMIN) -->
+        <div id="bulkSection" class="hidden space-y-4">
+          <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-center justify-between gap-2">
+            <div class="text-xs text-indigo-900">
+              <p class="font-bold">Templat CSV (Aktiviti & Pelajar)</p>
+              <p class="text-indigo-600">Muat turun format susunan fail.</p>
+            </div>
+            <button onclick="downloadCSVTemplate()" class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow transition flex items-center gap-1">
+              <span>⬇️</span> Templat CSV
+            </button>
+          </div>
+
+          <div class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-6 text-center bg-slate-50 transition cursor-pointer">
+            <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
+            <label for="csvFileInput" class="cursor-pointer space-y-2 block">
+              <span class="text-3xl block">📄</span>
+              <span class="text-sm font-semibold text-indigo-600 block">Klik untuk muat naik fail CSV</span>
+              <span class="text-xs text-slate-400 block">Susunan: Aktiviti, No_Matrik, Nama, Bilik, Kategori, Saiz</span>
+            </label>
+          </div>
+
+          <div class="relative flex py-1 items-center">
+            <div class="flex-grow border-t border-slate-200"></div>
+            <span class="flex-shrink mx-2 text-xs text-slate-400">ATAU UJI DEMO</span>
+            <div class="flex-grow border-t border-slate-200"></div>
+          </div>
+
+          <button onclick="loadBulkDemo50()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-lg text-sm transition shadow">
+            ⚡ Demo Upload 50 Orang (Ceramah Maulidur Rasul)
+          </button>
+        </div>
+
+        <!-- TAB 3: PENGIMBAS KOD QR KEHADIRAN -->
+        <div id="scanSection" class="hidden space-y-4">
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-800">
+            <p class="font-bold">📌 Pengimbas Kehadiran Pantas</p>
+            <p>Halakan kamera ke Kod QR (No. Matrik) pelajar atau taip No. Matrik secara manual.</p>
+          </div>
+
+          <!-- Kawasan Paparan Kamera QR -->
+          <div class="overflow-hidden rounded-xl border-2 border-emerald-500 bg-slate-900">
+            <div id="qr-reader" class="w-full"></div>
+          </div>
+
+          <div id="scanResultAlert" class="hidden p-3 rounded-lg text-xs font-semibold text-center"></div>
+
+          <!-- Semakan Manual -->
+          <div class="pt-2 border-t border-slate-200">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Carian / Penandaan Manual No. Matrik</label>
+            <div class="flex gap-2">
+              <input type="text" id="manualMatrikInput" placeholder="cth: M2026001" class="flex-grow px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none uppercase">
+              <button onclick="markManualAttendance()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition">
+                Tanda Hadir
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- KANAN: RESULT & KEPUTUSAN KEHADIRAN (7 Col) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- Dashboard Stat -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+            <p class="text-xs text-slate-500 uppercase font-semibold">Jumlah Berdaftar</p>
+            <p id="totalCount" class="text-2xl font-bold text-indigo-600 mt-1">0</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+            <p class="text-xs text-slate-500 uppercase font-semibold">Telah Hadir</p>
+            <p id="hadirCount" class="text-2xl font-bold text-emerald-600 mt-1">0</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-sm">
+            <p class="text-xs text-slate-500 uppercase font-semibold">Belum Hadir</p>
+            <p id="belumHadirCount" class="text-2xl font-bold text-amber-600 mt-1">0</p>
+          </div>
+        </div>
+
+        <!-- Jadual Result Pendaftaran & Kehadiran -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span>📊</span> Status Kehadiran Sukarelawan
+            </h2>
+            <button onclick="clearDataFirebase()" class="text-xs text-red-500 hover:underline">Reset Semua Data DB</button>
+          </div>
+
+          <!-- RUANGAN CARIAN DAN TAPISAN -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">🔍 Tapis Aktiviti</label>
+              <select id="filterAktiviti" onchange="renderResult()" class="w-full px-3 py-1.5 text-xs border rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <option value="ALL">-- Semua Aktiviti --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">🔎 Carian Nama / Matrik / Bilik</label>
+              <input type="text" id="searchKeyword" onkeyup="renderResult()" placeholder="Taip nama atau no. matrik..." class="w-full px-3 py-1.5 text-xs border rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+          </div>
+
+          <div class="overflow-x-auto max-h-[450px] overflow-y-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-100 text-slate-700 uppercase text-xs sticky top-0 bg-slate-100 shadow-sm">
+                <tr>
+                  <th class="p-3">Aktiviti</th>
+                  <th class="p-3">No. Matrik</th>
+                  <th class="p-3">Nama</th>
+                  <th class="p-3">Status Kehadiran</th>
+                  <th class="p-3">Masa Imbas</th>
+                  <th class="p-3">Tindakan</th>
+                </tr>
+              </thead>
+              <tbody id="resultTableBody" class="divide-y divide-slate-100">
+                <!-- Data dipaparkan di sini -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- INTEGRASI FIREBASE MODULAR (v12) & LOGIK SISTEM -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+    import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+    // Konfigurasi Firebase Anda
+    const firebaseConfig = {
+      apiKey: "AIzaSyAjxDn2x2N6RwOpI1lPxLxvmyBeUY7BJ9U",
+      authDomain: "sistem-volunteer-asrama.firebaseapp.com",
+      projectId: "sistem-volunteer-asrama",
+      storageBucket: "sistem-volunteer-asrama.firebasestorage.app",
+      messagingSenderId: "265502525304",
+      appId: "1:265502525304:web:c6a2b41f16d45bef986a8d",
+      measurementId: "G-MT7CRXK7WQ"
+    };
+
+    // Inisialisasi Firebase & Firestore
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const collectionRef = collection(db, "sukarelawan");
+
+    window.volunteers = [];
+    let html5QrcodeScanner = null;
+
+    // --- BACA DATA REAL-TIME DARI FIREBASE ---
+    onSnapshot(collectionRef, (snapshot) => {
+      window.volunteers = [];
+      snapshot.forEach((docSnap) => {
+        window.volunteers.push(docSnap.data());
+      });
+      renderResult();
+    });
+
+    // --- SIMPAN SATU PENDAFTARAN ---
+    async function saveVolunteerToFirebase(data) {
+      try {
+        await setDoc(doc(db, "sukarelawan", data.no_matrik), data);
+      } catch (e) {
+        console.error("Ralat simpan ke Firebase: ", e);
+      }
+    }
+
+    // --- KEMASKINI KEHADIRAN ---
+    async function updateAttendanceFirebase(noMatrik, isHadir, masaString) {
+      try {
+        await updateDoc(doc(db, "sukarelawan", noMatrik), {
+          status: isHadir ? 'HADIR' : 'Belum Hadir',
+          masa_hadir: isHadir ? masaString : '-'
+        });
+      } catch (e) {
+        console.error("Ralat kemaskini kehadiran: ", e);
+      }
+    }
+
+    // --- PADAM SEMUA DATA DB ---
+    window.clearDataFirebase = async function() {
+      if (confirm("Adakah anda pasti mahu memadam semua data dalam database Firebase?")) {
+        const querySnapshot = await getDocs(collectionRef);
+        querySnapshot.forEach(async (docSnap) => {
+          await deleteDoc(doc(db, "sukarelawan", docSnap.id));
+        });
+        document.getElementById('studentCardContainer').classList.add('hidden');
+      }
+    }
+
+    // --- FUNGSI PROSES KEHADIRAN ---
+    window.processAttendance = function(noMatrik) {
+      const cleanMatrik = noMatrik.trim().toUpperCase();
+      const target = window.volunteers.find(v => v.no_matrik.toUpperCase() === cleanMatrik);
+      const alertBox = document.getElementById('scanResultAlert');
+
+      alertBox.classList.remove('hidden', 'bg-emerald-100', 'text-emerald-800', 'bg-red-100', 'text-red-800', 'bg-amber-100', 'text-amber-800');
+
+      if (!target) {
+        alertBox.classList.add('bg-red-100', 'text-red-800');
+        alertBox.innerText = `❌ Ralat: Pelajar No. Matrik '${cleanMatrik}' tiada dalam senarai!`;
+        return;
+      }
+
+      if (target.status === 'HADIR') {
+        alertBox.classList.add('bg-amber-100', 'text-amber-800');
+        alertBox.innerText = `⚠️ Amaran: ${target.nama} (${target.no_matrik}) sudah pun ditanda HADIR pada ${target.masa_hadir}.`;
+        return;
+      }
+
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      updateAttendanceFirebase(cleanMatrik, true, timeString);
+
+      alertBox.classList.add('bg-emerald-100', 'text-emerald-800');
+      alertBox.innerText = `✅ BERJAYA! Kehadiran disahkan untuk ${target.nama} (${target.no_matrik}) pada ${timeString}.`;
+    }
+
+    window.markManualAttendance = function() {
+      const input = document.getElementById('manualMatrikInput');
+      if (input.value) {
+        window.processAttendance(input.value);
+        input.value = '';
+      }
+    }
+
+    window.toggleAttendanceStatus = function(noMatrik) {
+      const target = window.volunteers.find(v => v.no_matrik === noMatrik);
+      if (target) {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        updateAttendanceFirebase(noMatrik, target.status !== 'HADIR', timeString);
+      }
+    }
+
+    // --- HANDLER PENDAFTARAN KENDIRI ---
+    document.getElementById('singleForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const matrikVal = document.getElementById('no_matrik').value.trim().toUpperCase();
+      const namaVal = document.getElementById('nama').value.trim();
+
+      const newVolunteer = {
+        aktiviti: document.getElementById('aktiviti').value,
+        nama: namaVal,
+        no_matrik: matrikVal,
+        bilik: document.getElementById('bilik').value,
+        kategori: document.getElementById('kategori').value,
+        saiz: document.getElementById('saiz').value,
+        status: 'Belum Hadir',
+        masa_hadir: '-'
+      };
+
+      saveVolunteerToFirebase(newVolunteer);
+
+      // Jana Kad & Kod QR Pelajar
+      document.getElementById('cardName').innerText = namaVal;
+      document.getElementById('cardMatrik').innerText = matrikVal;
+      document.getElementById('cardQR').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(matrikVal)}`;
+      document.getElementById('studentCardContainer').classList.remove('hidden');
+
+      document.getElementById('singleForm').reset();
+    });
+
+    // --- DEMO BULK UPLOAD 50 ORANG KE FIREBASE ---
+    window.loadBulkDemo50 = function() {
+      const namaContoh = ["Ahmad", "Muhammad", "Siti", "Nurul", "Amirul", "Farah", "Aiman", "Khairul", "Zulaikha", "Danial"];
+      const namaBelakang = ["Razak", "Ibrahim", "Hassan", "Ismail", "Zulkifli", "Othman", "Yusof", "Hamzah", "Ariffin", "Bakri"];
+      const kategoriArr = ["Logistik", "Teknikal", "Urus Setia", "Media", "Kebajikan"];
+      const saizArr = ["S", "M", "L", "XL"];
+      const blokArr = ["A", "B", "C"];
+
+      for (let i = 1; i <= 50; i++) {
+        const randNama = namaContoh[Math.floor(Math.random() * namaContoh.length)] + " " + namaBelakang[Math.floor(Math.random() * namaBelakang.length)];
+        const randBlok = blokArr[Math.floor(Math.random() * blokArr.length)] + "-" + (100 + i);
+
+        saveVolunteerToFirebase({
+          aktiviti: "Ceramah Maulidur Rasul",
+          no_matrik: "M2026" + String(i).padStart(3, '0'),
+          nama: randNama,
+          bilik: randBlok,
+          kategori: kategoriArr[Math.floor(Math.random() * kategoriArr.length)],
+          saiz: saizArr[Math.floor(Math.random() * saizArr.length)],
+          status: 'Belum Hadir',
+          masa_hadir: '-'
+        });
+      }
+      alert("Berjaya memuat naik 50 orang sukarelawan ke Firebase!");
+    }
+
+    // --- BACA FAIL CSV UPLOAD ---
+    window.handleFileUpload = function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const contents = e.target.result;
+        const lines = contents.split('\n');
+        
+        let addedCount = 0;
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',');
+          if (cols.length >= 6 && cols[0].trim() !== '') {
+            saveVolunteerToFirebase({
+              aktiviti: cols[0].trim(),
+              no_matrik: cols[1].trim().toUpperCase(),
+              nama: cols[2].trim(),
+              bilik: cols[3].trim(),
+              kategori: cols[4].trim(),
+              saiz: cols[5].trim(),
+              status: 'Belum Hadir',
+              masa_hadir: '-'
+            });
+            addedCount++;
+          }
+        }
+        alert(`Berjaya memuat naik ${addedCount} rekod ke Firebase!`);
+      };
+      reader.readAsText(file);
+    }
+
+    // --- SCANNER FUNCTIONS ---
+    window.switchTab = function(type) {
+      document.getElementById('singleForm').classList.add('hidden');
+      document.getElementById('bulkSection').classList.add('hidden');
+      document.getElementById('scanSection').classList.add('hidden');
+
+      document.getElementById('tabSingleBtn').className = "py-2 px-3 text-slate-400 hover:text-indigo-600 whitespace-nowrap";
+      document.getElementById('tabBulkBtn').className = "py-2 px-3 text-slate-400 hover:text-indigo-600 whitespace-nowrap";
+      document.getElementById('tabScanBtn').className = "py-2 px-3 text-slate-400 hover:text-emerald-600 whitespace-nowrap";
+
+      if (type === 'single') {
+        document.getElementById('singleForm').classList.remove('hidden');
+        document.getElementById('tabSingleBtn').className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap font-bold";
+        stopQRScanner();
+      } else if (type === 'bulk') {
+        document.getElementById('bulkSection').classList.remove('hidden');
+        document.getElementById('tabBulkBtn').className = "py-2 px-3 text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap font-bold";
+        stopQRScanner();
+      } else if (type === 'scan') {
+        document.getElementById('scanSection').classList.remove('hidden');
+        document.getElementById('tabScanBtn').className = "py-2 px-3 text-emerald-600 border-b-2 border-emerald-600 whitespace-nowrap font-bold";
+        startQRScanner();
+      }
+    }
+
+    function startQRScanner() {
+      if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 });
+        html5QrcodeScanner.render((text) => window.processAttendance(text), () => {});
+      }
+    }
+
+    function stopQRScanner() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear().catch(e => console.error(e));
+        html5QrcodeScanner = null;
+      }
+    }
+
+    window.downloadCSVTemplate = function() {
+      const csvHeaderAndSample = "Aktiviti,No_Matrik,Nama,Bilik,Kategori,Saiz\n" +
+                                 "Ceramah Maulidur Rasul,A3001,Ahmad Razak,A-204,Logistik,L\n" +
+                                 "Ceramah Maulidur Rasul,A3002,Siti Sarah,B-102,Urus Setia,M\n" +
+                                 "Gotong Royong Asrama,A3003,Lee Chong Wei,A-105,Teknikal,XL";
+      
+      const blob = new Blob([csvHeaderAndSample], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "templat_bulk_aktiviti.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function updateAktivitiDropdown() {
+      const select = document.getElementById('filterAktiviti');
+      const currentValue = select.value;
+      const senaraiAktiviti = [...new Set(window.volunteers.map(v => v.aktiviti))];
+      
+      select.innerHTML = '<option value="ALL">-- Semua Aktiviti --</option>';
+      senaraiAktiviti.forEach(act => {
+        if(act) {
+          select.innerHTML += `<option value="${act}">${act}</option>`;
+        }
+      });
+
+      select.value = senaraiAktiviti.includes(currentValue) ? currentValue : 'ALL';
+    }
+
+    window.renderResult = function() {
+      updateAktivitiDropdown();
+
+      const selectedAktiviti = document.getElementById('filterAktiviti').value;
+      const searchKeyword = document.getElementById('searchKeyword').value.toLowerCase();
+
+      const tableBody = document.getElementById('resultTableBody');
+      tableBody.innerHTML = '';
+
+      const filteredVolunteers = window.volunteers.filter(v => {
+        const matchAktiviti = (selectedAktiviti === 'ALL') || (v.aktiviti === selectedAktiviti);
+        const matchSearch = v.nama.toLowerCase().includes(searchKeyword) || 
+                            v.no_matrik.toLowerCase().includes(searchKeyword) ||
+                            v.bilik.toLowerCase().includes(searchKeyword) ||
+                            v.aktiviti.toLowerCase().includes(searchKeyword);
+        return matchAktiviti && matchSearch;
+      });
+
+      if (filteredVolunteers.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 text-xs">Tiada rekod dijumpai dalam database.</td></tr>`;
+      }
+
+      let hadirCount = 0;
+
+      filteredVolunteers.forEach(v => {
+        if (v.status === 'HADIR') hadirCount++;
+
+        const isHadir = v.status === 'HADIR';
+        const badgeStatus = isHadir 
+          ? `<span class="bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full text-[11px] inline-flex items-center gap-1"><span>✓</span> HADIR</span>`
+          : `<span class="bg-amber-100 text-amber-800 font-medium px-2.5 py-1 rounded-full text-[11px]">Belum Hadir</span>`;
+
+        const row = `
+          <tr class="hover:bg-slate-50 border-b border-slate-100 text-xs">
+            <td class="p-3 font-semibold text-indigo-900">${v.aktiviti}</td>
+            <td class="p-3 font-semibold text-slate-800">${v.no_matrik}</td>
+            <td class="p-3 font-medium">${v.nama}</td>
+            <td class="p-3">${badgeStatus}</td>
+            <td class="p-3 font-mono text-slate-500">${v.masa_hadir || '-'}</td>
+            <td class="p-3">
+              <button onclick="toggleAttendanceStatus('${v.no_matrik}')" class="text-[11px] text-indigo-600 hover:underline">
+                ${isHadir ? 'Batal Hadir' : 'Tanda Hadir'}
+              </button>
+            </td>
+          </tr>
+        `;
+        tableBody.innerHTML += row;
+      });
+
+      document.getElementById('totalCount').innerText = filteredVolunteers.length;
+      document.getElementById('hadirCount').innerText = hadirCount;
+      document.getElementById('belumHadirCount').innerText = filteredVolunteers.length - hadirCount;
+    }
+  </script>
+</body>
+</html>
